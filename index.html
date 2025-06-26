@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Interaktif Linux From Scratch 12.3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: Aplikasi ini dirancang sebagai panduan langkah demi langkah yang terstruktur secara tematik, bukan sebagai replika buku yang linear. Strukturnya menggunakan navigasi utama berbasis "Fase" (Persiapan, Toolchain, Chroot, Konfigurasi) untuk memberikan gambaran besar. Setiap fase memiliki sub-navigasi di sidebar untuk detail per-bab. Pendekatan ini dipilih untuk memecah proses yang sangat kompleks menjadi bagian-bagian yang dapat dikelola, memungkinkan pengguna untuk fokus pada satu tahap pada satu waktu sambil tetap memahami posisi mereka dalam keseluruhan proses. Alur pengguna adalah: (1) Pilih Fase Utama -> (2) Pilih Bab/Langkah di sidebar -> (3) Ikuti instruksi di panel konten. Struktur ini mengutamakan kejelasan dan navigasi yang terarah daripada eksplorasi bebas, yang lebih sesuai untuk materi instruksional yang padat. -->
+    <!-- Visualization & Content Choices: 
+        - [Struktur Keseluruhan -> Goal: Organize] -> [HTML/CSS Flexbox Diagram -> Interaction: Click to filter] -> Visualisasi alur kerja utama LFS secara sederhana dan bersih.
+        - [Persyaratan Ruang Disk -> Goal: Inform] -> [Chart.js Bar Chart -> Interaction: Hover for tooltips] -> Menyajikan data kuantitatif (kebutuhan ruang disk) secara visual dan mudah dicerna.
+        - [Blok Perintah & Kode -> Goal: Inform/Instruct] -> [Styled <pre><code> with Copy Button -> Interaction: Click to copy] -> Membuat perintah yang kompleks mudah disalin dan dibaca, mengurangi kesalahan pengguna.
+        - [Langkah-langkah Bab -> Goal: Organize/Instruct] -> [Collapsible Accordion Sections -> Interaction: Click to expand/collapse] -> Mengelola kepadatan informasi dengan menyembunyikan detail sampai dibutuhkan, menjaga antarmuka tetap bersih.
+        Justifikasi: Pilihan ini secara kolektif mengubah dokumen teks yang padat menjadi alat pembelajaran interaktif. Visualisasi data, navigasi terstruktur, dan interaksi yang terfokus (copy, expand) secara langsung mendukung tujuan pengguna untuk mempelajari dan melaksanakan proses LFS yang kompleks dengan lebih sedikit hambatan. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8; /* Warm off-white */
+            color: #4B4B4B;
+        }
+        .nav-active {
+            background-color: #2563eb !important; /* Biru tebal agar kontras */
+            color: #fff !important;
+            transform: scale(1.05);
+            font-weight: bold;
+            box-shadow: 0 0 0 3px #93c5fd, 0 2px 8px #2563eb33;
+            border-color: #2563eb !important;
+            z-index: 1;
+        }
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-link:hover, .nav-link:focus {
+            background-color: #e0e7ff;
+            color: #2563eb;
+        }
+        .content-card {
+            background-color: #FFFFFF;
+            border: 1px solid #E2E8F0; /* Gray 200 */
+            border-radius: 0.75rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            scroll-margin-top: 5rem;
+        }
+        .code-block {
+            background-color: #2D3748; /* Gray 800 */
+            color: #F7FAFC; /* Gray 100 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            position: relative;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #4A5568; /* Gray 700 */
+            color: #E2E8F0; /* Gray 200 */
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .copy-btn:hover {
+            opacity: 1;
+        }
+        .accordion-header {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background-color: #F7FAFC; /* Gray 100 */
+            transition: background-color 0.2s;
+        }
+        .accordion-header:hover {
+            background-color: #EDF2F7; /* Gray 200 */
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+            border-top: 1px solid #E2E8F0;
+        }
+        .accordion-arrow {
+            transition: transform 0.3s ease-in-out;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 250px;
+            max-height: 300px;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app" class="max-w-screen-2xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <header class="text-center mb-12">
+            <h1 class="text-4xl sm:text-5xl font-bold text-gray-800 mb-2">Panduan Interaktif Linux From Scratch</h1>
+            <p class="text-lg text-gray-600">Terjemahan dan visualisasi langkah demi langkah dari buku LFS 12.3</p>
+            <a href="https://drive.google.com/uc?export=download&id=1T6ZuzDpndXz4Lo-Ri_LD5DHkDbk-m36E" target="_blank" rel="noopener" class="inline-block mt-4 px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 transition-colors text-lg" style="text-decoration:none;">
+                ⬇️ Download Buku LFS PDF
+            </a>
+        </header>
+
+        <nav class="mb-12">
+            <h2 class="text-2xl font-semibold text-center mb-6 text-gray-700">Pilih Fase Pembangunan</h2>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button data-phase="pendahuluan" class="nav-link text-lg font-semibold py-3 px-6 rounded-lg shadow-sm bg-white border border-gray-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 nav-active">
+                    Fase 1: Pendahuluan & Persiapan
+                </button>
+                <button data-phase="toolchain" class="nav-link text-lg font-semibold py-3 px-6 rounded-lg shadow-sm bg-white border border-gray-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    Fase 2: Toolchain & Alat Sementara
+                </button>
+                <button data-phase="chroot" class="nav-link text-lg font-semibold py-3 px-6 rounded-lg shadow-sm bg-white border border-gray-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    Fase 3: Pembangunan di Chroot
+                </button>
+                <button data-phase="konfigurasi" class="nav-link text-lg font-semibold py-3 px-6 rounded-lg shadow-sm bg-white border border-gray-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    Fase 4: Konfigurasi & Boot
+                </button>
+            </div>
+        </nav>
+
+        <main class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <aside class="lg:col-span-1 sticky top-8 self-start bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                <h3 id="sidebar-title" class="text-xl font-bold mb-4 text-gray-800">Langkah-langkah Fase 1</h3>
+                <ul id="sidebar-nav" class="space-y-2">
+                    <!-- Sidebar links will be dynamically populated here -->
+                </ul>
+            </aside>
+
+            <div id="content-area" class="lg:col-span-3">
+                <!-- Content cards will be dynamically populated here -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const appData = {
+            pendahuluan: {
+                title: "Langkah-langkah Fase 1",
+                content: [
+                    { 
+                        id: 'bab1-intro', 
+                        title: 'Pendahuluan: Filosofi LFS',
+                        content: `
+                            <p class="mb-4">Linux From Scratch (LFS) adalah sebuah metode untuk membangun sistem Linux kustom dari nol, langsung dari kode sumber. Tujuannya bukan hanya untuk menciptakan sistem yang berfungsi, tetapi untuk memberikan pemahaman mendalam tentang bagaimana komponen-komponen Linux bekerja sama.</p>
+                            <p class="mb-4">Proses ini memberikan kontrol penuh atas sistem, memungkinkan optimasi, kustomisasi, dan keamanan yang tidak dapat dicapai dengan distribusi standar. Anda akan belajar tentang toolchain, kernel, pustaka C, skrip boot, dan banyak lagi.</p>
+                            <p class="font-semibold">Laporan ini adalah pendamping interaktif untuk buku LFS 12.3, yang menargetkan arsitektur x86_64.</p>
+                        `
+                    },
+                    { 
+                        id: 'bab2-host', 
+                        title: 'Bab 2: Mempersiapkan Sistem Host',
+                        content: `
+                            <p class="mb-4">Fondasi dari LFS adalah sistem Linux yang sudah ada, yang disebut "sistem host". Sistem ini harus stabil dan memiliki semua perangkat lunak yang diperlukan (kompiler, utilitas, dll) dengan versi yang benar. Kegagalan pada tahap ini adalah penyebab umum masalah di kemudian hari.</p>
+                            
+                            <div class="accordion">
+                                <div class="accordion-header">
+                                    <span class="font-semibold">2.1 Persyaratan & Pemeriksaan Versi</span>
+                                    <span class="accordion-arrow transform rotate-0">▼</span>
+                                </div>
+                                <div class="accordion-content p-4">
+                                    <p class="mb-4">Gunakan skrip ini pada terminal sistem host Anda untuk memverifikasi bahwa semua dependensi terpenuhi. Jika ada output "ERROR", perbaiki sebelum melanjutkan.</p>
+                                    <div class="code-block" data-code="bash version-check.sh">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>cat > version-check.sh &lt;&lt; "EOF"
+#!/bin/bash
+# Skrip untuk menampilkan nomor versi dari alat pengembangan penting
+LC_ALL=C
+PATH=/usr/bin:/bin
+bail() { echo "FATAL: $1"; exit 1; }
+grep --version > /dev/null 2>/dev/null || bail "grep tidak berfungsi"
+sed '' /dev/null || bail "sed tidak berfungsi"
+sort /dev/null || bail "sort tidak berfungsi"
+ver_check()
+{
+  if ! type -p $2 &>/dev/null; then echo "ERROR: Tidak dapat menemukan $2 ($1)"; return 1; fi
+  v=$($2 --version 2>&1 | grep -E -o '[0-9]+\\.[0-9\\.]+[a-z]*' | head -n1)
+  if printf '%s\\n' $3 $v | sort --version-sort --check &>/dev/null; then
+    printf "OK: %-9s %-6s >= $3\\n" "$1" "$v"; return 0;
+  else
+    printf "ERROR: %-9s TERLALU TUA ($3 atau lebih baru dibutuhkan)\\n" "$1"; return 1;
+  fi
+}
+ver_kernel()
+{
+  kver=$(uname -r | grep -E -o '^[0-9\\.]+')
+  if printf '%s\\n' $1 $kver | sort --version-sort --check &>/dev/null; then
+    printf "OK: Kernel Linux $kver >= $1\\n"; return 0;
+  else
+    printf "ERROR: Kernel Linux ($kver) TERLALU TUA ($1 atau lebih baru dibutuhkan)\\n" "$kver"; return 1;
+  fi
+}
+ver_check Coreutils sort 8.1 || bail "Coreutils terlalu tua, berhenti"
+ver_check Bash      bash   3.2
+ver_check Binutils  ld     2.13.1
+ver_check Bison     bison  2.7
+# ... (dan sisa pemeriksaan dari skrip)
+ver_check Gcc       gcc    4.8
+ver_check Glibc     ldd    2.17
+# ...
+if printf "int main(){}" | g++ -x c++ -; then echo "OK: g++ berfungsi"; else echo "ERROR: g++ TIDAK berfungsi"; fi
+rm -f a.out
+EOF
+
+bash version-check.sh</pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion mt-4">
+                                <div class="accordion-header">
+                                    <span class="font-semibold">2.2 & 2.3 Partisi & Sistem File</span>
+                                    <span class="accordion-arrow transform rotate-0">▼</span>
+                                </div>
+                                <div class="accordion-content p-4">
+                                    <p class="mb-4">Sangat disarankan untuk membuat partisi baru khusus untuk LFS. Ini mengisolasi sistem LFS Anda dan mencegah kerusakan pada sistem host. Ukuran yang direkomendasikan adalah 30 GB.</p>
+                                    <div class="chart-container my-6">
+                                        <canvas id="diskSpaceChart"></canvas>
+                                    </div>
+                                    <p class="mb-2">Gunakan alat seperti <code>fdisk</code> atau <code>cfdisk</code> untuk membuat partisi baru. Kemudian, format partisi tersebut dengan sistem file <code>ext4</code>, yang merupakan pilihan yang andal dan modern.</p>
+                                    <div class="code-block" data-code="mkfs -v -t ext4 /dev/<xxx>">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre># Ganti <xxx> dengan nama partisi Anda, misal: sda5
+mkfs -v -t ext4 /dev/&lt;xxx&gt;
+
+# Jika membuat partisi swap (opsional)
+# Ganti <yyy> dengan nama partisi swap, misal: sda6
+mkswap /dev/&lt;yyy&gt;</pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion mt-4">
+                                <div class="accordion-header">
+                                    <span class="font-semibold">2.4 & 2.5 Variabel $LFS & Mounting</span>
+                                    <span class="accordion-arrow transform rotate-0">▼</span>
+                                </div>
+                                <div class="accordion-content p-4">
+                                    <p class="mb-4">Variabel lingkungan <code>$LFS</code> adalah variabel inti yang menunjuk ke titik mount partisi LFS Anda. Ini akan digunakan secara ekstensif di seluruh proses.</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>export LFS=/mnt/lfs
+umask 022
+
+mkdir -pv $LFS
+mount -v -t ext4 /dev/&lt;xxx&gt; $LFS
+
+# Aktifkan swap jika dibuat
+/sbin/swapon -v /dev/&lt;yyy&gt;</pre>
+                                    </div>
+                                    <p class="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-r-lg">
+                                        <strong>Penting:</strong> Pastikan Anda menjalankan perintah-perintah ini sebagai pengguna <code>root</code>.
+                                    </p>
+                                </div>
+                            </div>
+                        `
+                    },
+                    { 
+                        id: 'bab3-paket', 
+                        title: 'Bab 3: Paket dan Patch',
+                        content: `
+                            <p class="mb-4">Sekarang kita perlu mengumpulkan semua "bahan mentah": kode sumber untuk setiap program dan patch yang diperlukan untuk memperbaiki bug. Semua file ini harus ditempatkan di direktori <code>$LFS/sources</code>.</p>
+                            <div class="code-block">
+                                <button class="copy-btn">Salin</button>
+                                <pre>mkdir -v $LFS/sources
+chmod -v a+wt $LFS/sources</pre>
+                            </div>
+                            <p class="mb-4">Anda dapat mengunduh semua paket yang diperlukan menggunakan file <code>wget-list</code> yang disediakan oleh LFS. Ini adalah cara yang paling efisien.</p>
+                            <div class="code-block">
+                                <button class="copy-btn">Salin</button>
+                                <pre>wget --input-file=wget-list-sysv --continue --directory-prefix=$LFS/sources</pre>
+                            </div>
+                            <p class="mt-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-r-lg">
+                                <strong>Verifikasi:</strong> Setelah mengunduh, selalu verifikasi integritas file menggunakan checksum MD5 yang disediakan di buku LFS.
+                                <code>pushd $LFS/sources && md5sum -c md5sums && popd</code>
+                            </p>
+                        `
+                    },
+                    { 
+                        id: 'bab4-persiapan', 
+                        title: 'Bab 4: Persiapan Akhir',
+                        content: `
+                            <p class="mb-4">Langkah terakhir sebelum memulai kompilasi adalah menyiapkan lingkungan build yang terisolasi. Ini melibatkan pembuatan tata letak direktori minimal dan pengguna non-root khusus untuk tujuan build.</p>
+
+                            <div class="accordion">
+                                <div class="accordion-header">
+                                    <span class="font-semibold">4.1 Direktori & 4.2 Pengguna 'lfs'</span>
+                                    <span class="accordion-arrow transform rotate-0">▼</span>
+                                </div>
+                                <div class="accordion-content p-4">
+                                    <p class="mb-4">Membangun sebagai <code>root</code> sangat berbahaya. Kita akan membuat pengguna baru bernama <code>lfs</code> untuk melakukan semua kompilasi. Ini adalah praktik keamanan mendasar.</p>
+                                    <p class="mb-2">Pertama, buat direktori dasar, termasuk <code>/tools</code> yang krusial untuk toolchain sementara.</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>mkdir -pv $LFS/{etc,var} $LFS/usr/{bin,lib,sbin}
+for i in bin lib sbin; do
+  ln -sv usr/$i $LFS/$i
+done
+case $(uname -m) in
+  x86_64) mkdir -pv $LFS/lib64 ;;
+esac
+mkdir -pv $LFS/tools</pre>
+                                    </div>
+                                    <p class="my-2">Selanjutnya, buat pengguna dan grup <code>lfs</code>, lalu berikan kepemilikan direktori yang relevan.</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>groupadd lfs
+useradd -s /bin/bash -g lfs -m -k /dev/null lfs
+passwd lfs
+chown -v lfs $LFS/{usr,lib,var,etc,bin,sbin,tools}
+case $(uname -m) in
+  x86_64) chown -v lfs $LFS/lib64 ;;
+esac</pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion mt-4">
+                                <div class="accordion-header">
+                                    <span class="font-semibold">4.3 Menyiapkan Lingkungan Build</span>
+                                    <span class="accordion-arrow transform rotate-0">▼</span>
+                                </div>
+                                <div class="accordion-content p-4">
+                                    <p class="mb-4">Ini adalah langkah yang paling penting. Lingkungan shell yang bersih dan terkontrol sangat penting. Kegagalan mengatur ini dengan benar adalah penyebab paling umum dari kegagalan build.</p>
+                                    <p class="mb-2">Masuk sebagai pengguna <code>lfs</code> dan buat file konfigurasi shell berikut.</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>su - lfs</pre>
+                                    </div>
+                                    <p class="my-2">Buat <code>~/.bash_profile</code> untuk memastikan lingkungan yang bersih:</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>cat > ~/.bash_profile &lt;&lt; "EOF"
+exec env -i HOME=$HOME TERM=$TERM PS1='\\u:\\w\\$ ' /bin/bash
+EOF</pre>
+                                    </div>
+                                     <p class="my-2">Buat <code>~/.bashrc</code> untuk mengatur variabel-variabel penting untuk build:</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>cat > ~/.bashrc &lt;&lt; "EOF"
+set +h
+umask 022
+LFS=/mnt/lfs
+LC_ALL=POSIX
+LFS_TGT=$(uname -m)-lfs-linux-gnu
+PATH=/usr/bin
+if [ ! -L /bin ]; then PATH=/bin:$PATH; fi
+PATH=$LFS/tools/bin:$PATH
+CONFIG_SITE=$LFS/usr/share/config.site
+export LFS LC_ALL LFS_TGT PATH CONFIG_SITE
+export MAKEFLAGS="-j$(nproc)"
+EOF</pre>
+                                    </div>
+                                    <p class="mt-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-r-lg">
+                                        <strong>Selesai!</strong> Setelah menjalankan <code>source ~/.bash_profile</code>, Anda siap untuk melanjutkan ke Fase 2: membangun toolchain.
+                                    </p>
+                                </div>
+                            </div>
+                        `
+                    }
+                ]
+            },
+            toolchain: {
+                title: "Langkah-langkah Fase 2",
+                content: [
+                    { 
+                        id: 'bab5-intro-toolchain', 
+                        title: 'Pengantar: Konsep Toolchain',
+                        content: `
+                            <p class="mb-4">Selamat datang di Fase 2. Tujuan di sini adalah membangun "Toolchain" - seperangkat alat kompilasi (kompiler, linker, assembler) yang akan digunakan untuk membangun sisa sistem. Ini adalah proses "bootstrapping" yang memecahkan masalah "ayam dan telur": untuk membangun kompiler, Anda memerlukan kompiler.</p>
+                            <p class="mb-4">Kita akan melalui dua tahap utama:</p>
+                            <ol class="list-decimal list-inside space-y-2 mb-4">
+                                <li><strong>Bab 5: Toolchain Silang.</strong> Kita membangun toolchain sementara di <code>/tools</code> yang berjalan di sistem host tetapi menghasilkan kode untuk sistem LFS kita.</li>
+                                <li><strong>Bab 6: Alat Sementara.</strong> Kita menggunakan toolchain silang tersebut untuk membangun satu set utilitas dasar (seperti Bash, Coreutils, dll) yang akan menjadi bagian dari sistem LFS.</li>
+                            </ol>
+                            <p class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-r-lg">
+                                <strong>Penting:</strong> Semua perintah di Fase 2 harus dijalankan sebagai pengguna <code>lfs</code> yang telah kita buat sebelumnya.
+                            </p>
+                        `
+                    },
+                    { 
+                        id: 'bab5-binutils1', 
+                        title: '5.2: Binutils - Pass 1',
+                        content: `
+                            <p class="mb-4">Binutils berisi linker dan assembler. Ini harus dikompilasi terlebih dahulu karena GCC dan Glibc bergantung padanya.</p>
+                            <div class="code-block">
+                                <button class="copy-btn">Salin</button>
+                                <pre>tar -xf binutils-2.44.tar.xz
+cd binutils-2.44
+mkdir -v build
+cd build
+../configure --prefix=$LFS/tools \\
+             --with-sysroot=$LFS \\
+             --target=$LFS_TGT \\
+             --disable-nls \\
+             --enable-gprofng=no \\
+             --disable-werror
+make
+make install
+cd ../..
+rm -rf binutils-2.44</pre>
+                            </div>
+                        `
+                    },
+                    { 
+                        id: 'bab5-gcc1', 
+                        title: '5.3: GCC - Pass 1',
+                        content: `
+                            <p class="mb-4">Sekarang kita membangun kompiler C/C++ (GCC). Ini adalah versi terbatas yang belum memiliki semua fitur, karena pustaka C (Glibc) belum ada.</p>
+                             <div class="code-block">
+                                <button class="copy-btn">Salin</button>
+                                <pre>tar -xf gcc-14.2.0.tar.xz
+cd gcc-14.2.0
+# ... (perintah untuk mengekstrak mpfr, gmp, mpc) ...
+mkdir -v build
+cd build
+../configure \\
+    --target=$LFS_TGT \\
+    --prefix=$LFS/tools \\
+    --with-glibc-version=2.41 \\
+    --with-sysroot=$LFS \\
+    --with-newlib \\
+    --without-headers \\
+    --disable-nls \\
+    --disable-shared \\
+    --disable-multilib \\
+    --disable-threads \\
+    --disable-libstdcxx \\
+    --enable-languages=c,c++
+make
+make install
+cd ../..
+rm -rf gcc-14.2.0</pre>
+                            </div>
+                        `
+                    },
+                    {
+                        id: 'bab5-glibc',
+                        title: '5.4 & 5.5: Linux API Headers & Glibc',
+                        content: `
+                            <p class="mb-4">Glibc adalah Pustaka C utama, fondasi dari hampir semua program. Sebelum membangunnya, kita perlu mengekstrak header dari sumber kernel Linux agar Glibc tahu cara berkomunikasi dengan kernel.</p>
+                            <div class="code-block">
+                                <button class="copy-btn">Salin</button>
+                                <pre># Instalasi Linux API Headers
+tar -xf linux-6.13.4.tar.xz
+cd linux-6.13.4
+make mrproper
+make headers
+find usr/include -type f ! -name '*.h' -delete
+cp -rv usr/include $LFS/usr
+cd ..
+rm -rf linux-6.13.4
+
+# Kompilasi Glibc
+tar -xf glibc-2.41.tar.xz
+cd glibc-2.41
+mkdir -v build
+cd build
+../configure \\
+    --prefix=/usr \\
+    --host=$LFS_TGT \\
+    --build=$(../scripts/config.guess) \\
+    --enable-kernel=5.4 \\
+    --with-headers=$LFS/usr/include \\
+    libc_cv_slibdir=/usr/lib
+make
+make DESTDIR=$LFS install
+cd ../..
+rm -rf glibc-2.41</pre>
+                            </div>
+                            <p class="mt-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-r-lg">
+                                <strong>Pemeriksaan Kewarasan:</strong> Setelah Glibc terinstal, sangat penting untuk memeriksa apakah toolchain Anda berfungsi. Jalankan perintah sederhana untuk mengkompilasi file dummy. Kegagalan di sini menunjukkan masalah serius.
+                            </p>
+                        `
+                    },
+                     {
+                        id: 'bab6-alat',
+                        title: 'Bab 6: Mengompilasi Silang Alat Sementara',
+                        content: `
+                            <p class="mb-4">Pada titik ini, kita memiliki toolchain silang dasar yang berfungsi. Sekarang kita akan menggunakannya untuk membangun satu set utilitas penting (Bash, Coreutils, Grep, dll.). Paket-paket ini diinstal ke lokasi final mereka (misalnya <code>/usr/bin</code> di dalam LFS), tetapi karena mereka masih dikompilasi dengan toolchain silang, mereka belum bisa dijalankan.</p>
+                            <p class="mb-4">Pola untuk setiap paket di bab ini adalah sama:</p>
+                            <ol class="list-decimal list-inside space-y-2 mb-4">
+                                <li>Ekstrak paket sumber.</li>
+                                <li>Jalankan <code>./configure --host=$LFS_TGT --prefix=/usr</code> dengan opsi spesifik lainnya.</li>
+                                <li>Jalankan <code>make</code>.</li>
+                                <li>Jalankan <code>make DESTDIR=$LFS install</code>.</li>
+                            </ol>
+                            <p class="mt-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-r-lg">
+                                Ini adalah langkah yang panjang dan berulang-ulang, membangun fondasi perangkat lunak untuk sistem baru Anda. Setelah menyelesaikan Bab 6, Anda siap untuk langkah besar berikutnya: memasuki lingkungan <code>chroot</code>.
+                            </p>
+                        `
+                    },
+                ]
+            },
+            chroot: {
+                title: "Langkah-langkah Fase 3",
+                content: [
+                    {
+                        id: 'bab7-chroot',
+                        title: 'Bab 7: Memasuki Lingkungan Chroot',
+                        content: `
+                            <p class="mb-4">Ini adalah titik balik monumental. "Chroot" (change root) adalah operasi yang mengubah direktori root ('/') untuk proses saat ini dan turunannya. Kita akan "menjebak" diri kita sendiri di dalam partisi LFS, mengisolasinya sepenuhnya dari sistem host.</p>
+                            <p class="mb-4">Mulai dari sini, sistem LFS akan membangun dirinya sendiri menggunakan alat yang telah kita bangun sebelumnya.</p>
+                            
+                            <div class="accordion">
+                                <div class="accordion-header">
+                                    <span class="font-semibold">7.1 - 7.3: Persiapan & Masuk Chroot</span>
+                                    <span class="accordion-arrow transform rotate-0">▼</span>
+                                </div>
+                                <div class="accordion-content p-4">
+                                    <p class="mb-2">Sebelum masuk, ubah kepemilikan direktori LFS ke <code>root</code> dan siapkan sistem file kernel virtual agar sistem chroot dapat berbicara dengan kernel host.</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre># Jalankan sebagai root di sistem host
+chown -R root:root $LFS/{usr,lib,var,etc,bin,sbin,tools}
+
+mkdir -pv $LFS/{dev,proc,sys,run}
+mount -v --bind /dev $LFS/dev
+mount -vt devpts devpts -o gid=5,mode=0620 $LFS/dev/pts
+mount -vt proc proc $LFS/proc
+mount -vt sysfs sysfs $LFS/sys</pre>
+                                    </div>
+                                    <p class="my-2">Sekarang, perintah untuk memasuki lingkungan chroot:</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>chroot "$LFS" /usr/bin/env -i \\
+    HOME=/root TERM="$TERM" \\
+    PS1='(lfs chroot) \\u:\\w\\$ ' \\
+    PATH=/usr/bin:/usr/sbin \\
+    /bin/bash --login</pre>
+                                    </div>
+                                    <p class="mt-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-r-lg">
+                                        Perhatikan prompt <code>(lfs chroot)</code>. Anda sekarang berada di dalam sistem LFS baru Anda!
+                                    </p>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        id: 'bab8-install',
+                        title: 'Bab 8: Menginstal Perangkat Lunak Sistem Dasar',
+                        content: `
+                            <p class="mb-4">Ini adalah fase pembangunan utama. Di sini, lebih dari 80 paket yang membentuk sistem Linux dasar dikompilasi dan diinstal. Yang penting, setiap paket sekarang dibangun menggunakan toolchain yang ada DI DALAM sistem LFS itu sendiri.</p>
+                            <p class="mb-4">Proses untuk setiap paket umumnya adalah:</p>
+                            <ol class="list-decimal list-inside space-y-2 mb-4">
+                                <li>Ekstrak arsip.</li>
+                                <li>Jalankan <code>./configure --prefix=/usr</code>.</li>
+                                <li>Jalankan <code>make</code>.</li>
+                                <li>(Sangat Penting) Jalankan <code>make check</code> untuk menguji build.</li>
+                                <li>Jalankan <code>make install</code>.</li>
+                            </ol>
+                            <p class="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-r-lg">
+                                <strong>Kesabaran adalah Kunci:</strong> Bab ini adalah bagian terpanjang dari proses LFS. Menjalankan <code>make check</code> sangat penting untuk memastikan setiap komponen berfungsi dengan benar sebelum membangun yang lain di atasnya.
+                            </p>
+                            <p class="mt-4">Setelah semua paket terinstal, jalankan proses "stripping" untuk menghapus simbol debugging yang tidak perlu dan menghemat banyak ruang disk.</p>
+                        `
+                    }
+                ]
+            },
+            konfigurasi: {
+                title: "Langkah-langkah Fase 4",
+                content: [
+                     {
+                        id: 'bab9-config',
+                        title: 'Bab 9: Konfigurasi Sistem',
+                        content: `
+                            <p class="mb-4">Pada titik ini, Anda memiliki kumpulan besar paket yang terinstal, tetapi itu belum menjadi sistem yang koheren. Bab ini adalah tentang mengikat semuanya bersama dengan file konfigurasi.</p>
+                            <p class="mb-4">Anda akan mengonfigurasi:</p>
+                            <ul class="list-disc list-inside space-y-2 mb-4">
+                                <li><strong>Skrip Boot (SysVinit):</strong> Mengatur bagaimana sistem memulai, berhenti, dan mengelola layanan. File utamanya adalah <code>/etc/inittab</code>.</li>
+                                <li><strong>Udev:</strong> Mengelola pembuatan node perangkat secara dinamis di <code>/dev</code>.</li>
+                                <li><strong>Jaringan:</strong> Mengatur alamat IP, server DNS, dan nama host.</li>
+                                <li><strong>Pengaturan Sistem Lainnya:</strong> Jam, layout keyboard, bahasa sistem, dll.</li>
+                            </ul>
+                            <p class="mt-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-r-lg">
+                                Ini adalah langkah di mana sistem Anda mulai memiliki "kepribadian" dan disiapkan untuk interaksi pengguna.
+                            </p>
+                        `
+                    },
+                    {
+                        id: 'bab10-boot',
+                        title: 'Bab 10: Membuat Sistem Bootable',
+                        content: `
+                            <p class="mb-4">Ini adalah bab terakhir dari pembangunan aktif, mempersiapkan sistem untuk reboot pertamanya yang independen.</p>
+                            
+                            <div class="accordion">
+                                <div class="accordion-header">
+                                    <span class="font-semibold">10.2 File /etc/fstab</span>
+                                    <span class="accordion-arrow transform rotate-0">▼</span>
+                                </div>
+                                <div class="accordion-content p-4">
+                                    <p class="mb-2">File <code>fstab</code> (file system table) memberitahu sistem partisi mana yang harus di-mount saat boot. Ini adalah file konfigurasi yang sangat penting.</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>cat > /etc/fstab &lt;&lt; "EOF"
+# Begin /etc/fstab
+# file system  mount-point  type   options         dump  fsck
+/dev/&lt;xxx&gt;     /            ext4   defaults        1     1
+/dev/&lt;yyy&gt;     swap         swap   pri=1           0     0
+proc           /proc        proc   nosuid,noexec,nodev 0 0
+sysfs          /sys         sysfs  nosuid,noexec,nodev 0 0
+# ... entri lainnya ...
+# End /etc/fstab
+EOF</pre>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion mt-4">
+                                <div class="accordion-header">
+                                    <span class="font-semibold">10.3 & 10.4 Kernel & Bootloader GRUB</span>
+                                    <span class="accordion-arrow transform rotate-0">▼</span>
+                                </div>
+                                <div class="accordion-content p-4">
+                                    <p class="mb-2">Membangun kernel Linux Anda sendiri adalah salah satu bagian paling kuat dari LFS. Anda dapat mengaktifkan driver dan fitur yang Anda butuhkan secara spesifik.</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre># Di dalam direktori sumber kernel
+make menuconfig  # Konfigurasi interaktif
+make
+make modules_install
+cp -iv arch/x86/boot/bzImage /boot/vmlinuz-6.13.4-lfs-12.3</pre>
+                                    </div>
+                                    <p class="my-2">GRUB (GRand Unified Bootloader) adalah program yang memuat kernel. Instal dan konfigurasikan untuk menunjuk ke kernel baru Anda.</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn">Salin</button>
+                                        <pre>grub-install /dev/sda # Ganti sda dengan drive boot Anda
+                                        
+# Buat /boot/grub/grub.cfg
+cat > /boot/grub/grub.cfg &lt;&lt; "EOF"
+set default=0
+set timeout=5
+menuentry "GNU/Linux, LFS 12.3" {
+    linux /boot/vmlinuz-6.13.4-lfs-12.3 root=/dev/&lt;xxx&gt; ro
+}
+EOF</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        id: 'bab11-akhir',
+                        title: 'Bab 11: Akhir Perjalanan',
+                        content: `
+                            <p class="mb-4">Selamat! Anda telah mencapai akhir. Satu-satunya yang tersisa adalah keluar dari chroot, unmount semua sistem file, dan reboot.</p>
+                            <div class="code-block">
+                                <button class="copy-btn">Salin</button>
+                                <pre>logout # Keluar dari chroot
+
+# Sebagai root di sistem host
+umount -v $LFS/dev/pts
+umount -v $LFS/dev
+# ... unmount yang lain ...
+umount -v $LFS
+
+reboot</pre>
+                            </div>
+                            <p class="mt-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-r-lg">
+                                Jika semuanya berjalan dengan baik, Anda akan disambut oleh prompt login dari sistem LFS baru Anda. Perjalanan Anda baru saja dimulai. Proyek <strong>Beyond Linux From Scratch (BLFS)</strong> adalah langkah berikutnya untuk menginstal lingkungan desktop, browser, dan perangkat lunak lainnya.
+                            </p>
+                        `
+                    }
+                ]
+            }
+        };
+
+        const navButtons = document.querySelectorAll('nav button');
+        const sidebarNav = document.getElementById('sidebar-nav');
+        const sidebarTitle = document.getElementById('sidebar-title');
+        const contentArea = document.getElementById('content-area');
+
+        function updateContent(phase) {
+            const phaseData = appData[phase];
+            if (!phaseData) return;
+            
+            sidebarTitle.textContent = phaseData.title;
+            
+            sidebarNav.innerHTML = phaseData.content.map(item => `
+                <li>
+                    <a href="#${item.id}" class="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">${item.title}</a>
+                </li>
+            `).join('');
+
+            contentArea.innerHTML = phaseData.content.map(item => `
+                <div id="${item.id}" class="content-card">
+                    <h2 class="text-2xl sm:text-3xl font-bold mb-4 text-gray-800">${item.title}</h2>
+                    ${item.content}
+                </div>
+            `).join('');
+            
+            // Re-initialize event listeners for new content
+            initializeEventListeners();
+
+            // Special case for chart rendering
+            if (phase === 'pendahuluan') {
+                renderDiskSpaceChart();
+            }
+        }
+
+        function handleNavClick(e) {
+            const targetPhase = e.target.dataset.phase;
+
+            navButtons.forEach(btn => btn.classList.remove('nav-active'));
+            e.target.classList.add('nav-active');
+
+            updateContent(targetPhase);
+        }
+
+        function handleCopyClick(e) {
+            const button = e.target;
+            const codeBlock = button.parentElement;
+            const code = codeBlock.querySelector('pre').innerText;
+
+            navigator.clipboard.writeText(code).then(() => {
+                button.textContent = 'Disalin!';
+                setTimeout(() => {
+                    button.textContent = 'Salin';
+                }, 2000);
+            }).catch(err => {
+                console.error('Gagal menyalin teks: ', err);
+            });
+        }
+        
+        function handleAccordionClick(e) {
+            const header = e.currentTarget;
+            const content = header.nextElementSibling;
+            const arrow = header.querySelector('.accordion-arrow');
+
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                arrow.style.transform = 'rotate(0deg)';
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                arrow.style.transform = 'rotate(180deg)';
+            }
+        }
+        
+        function renderDiskSpaceChart() {
+            const ctx = document.getElementById('diskSpaceChart');
+            if (!ctx) return;
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Kebutuhan Ruang Disk'],
+                    datasets: [{
+                        label: 'Minimum (GB)',
+                        data: [10],
+                        backgroundColor: 'rgba(251, 146, 60, 0.6)', // Orange 400
+                        borderColor: 'rgba(251, 146, 60, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Direkomendasikan (GB)',
+                        data: [30],
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)', // Blue 500
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Perbandingan Ruang Disk untuk LFS',
+                            font: { size: 16 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw} GB`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Gigabytes (GB)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeEventListeners() {
+            document.querySelectorAll('.copy-btn').forEach(button => {
+                button.addEventListener('click', handleCopyClick);
+            });
+            document.querySelectorAll('.accordion-header').forEach(header => {
+                header.addEventListener('click', handleAccordionClick);
+            });
+        }
+
+        navButtons.forEach(button => button.addEventListener('click', handleNavClick));
+
+        // Initial load
+        updateContent('pendahuluan');
+    </script>
+</body>
+</html>
